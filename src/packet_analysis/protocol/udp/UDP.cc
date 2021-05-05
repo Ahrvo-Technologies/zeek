@@ -23,7 +23,7 @@ enum UDP_EndpointState {
 	UDP_ACTIVE,		// packets seen
 };
 
-UDPAnalyzer::UDPAnalyzer() : IPBasedAnalyzer("UDP")
+UDPAnalyzer::UDPAnalyzer() : IPBasedAnalyzer("UDP", TRANSPORT_UDP, UDP_PORT_MASK)
 	{
 	report_unknown_protocols = false;
 	// TODO: remove once the other plugins are done

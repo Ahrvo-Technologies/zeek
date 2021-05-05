@@ -26,16 +26,6 @@ public:
 protected:
 
 	/**
-	 * Returns the port mask for an analyzer. Used by IsLikelyServerPort().
-	 */
-	uint32_t GetServerPortMask() const override { return TCP_PORT_MASK; }
-
-	/**
-	 * Returns the transport protocol. Used by NewConn().
-	 */
-	TransportProto GetTransportProto() const override { return TRANSPORT_TCP; }
-
-	/**
 	 * Upon seeing the first packet of a connection, checks whether we want
 	 * to analyze it (e.g. we may not want to look at partial connections)
 	 * and, if yes, whether we should flip the roles of originator and

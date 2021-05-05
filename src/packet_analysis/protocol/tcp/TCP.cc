@@ -6,7 +6,7 @@
 using namespace zeek::packet_analysis::TCP;
 using namespace zeek::packet_analysis::IP;
 
-TCPAnalyzer::TCPAnalyzer() : IPBasedAnalyzer("TCP")
+TCPAnalyzer::TCPAnalyzer() : IPBasedAnalyzer("TCP", TRANSPORT_TCP, TCP_PORT_MASK)
 	{
 	}
 

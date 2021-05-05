@@ -25,7 +25,7 @@ enum ICMP_EndpointState {
 using namespace zeek::packet_analysis::ICMP;
 using namespace zeek::packet_analysis::IP;
 
-ICMPAnalyzer::ICMPAnalyzer() : IPBasedAnalyzer("ICMP")
+ICMPAnalyzer::ICMPAnalyzer() : IPBasedAnalyzer("ICMP", TRANSPORT_ICMP, ICMP_PORT_MASK)
 	{
 	report_unknown_protocols = false;
 	// TODO: remove once the other plugins are done

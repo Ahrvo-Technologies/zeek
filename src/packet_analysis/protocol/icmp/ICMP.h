@@ -34,16 +34,6 @@ public:
 
 protected:
 
-	/**
-	 * Returns the port mask for an analyzer used by IsLikelyServerPort.
-	 */
-	uint32_t GetServerPortMask() const override { return ICMP_PORT_MASK; }
-
-	/**
-	 * Returns the transport protocol. Used by NewConn().
-	 */
-	TransportProto GetTransportProto() const override { return TRANSPORT_ICMP; }
-
 	void ContinueProcessing(Connection* c, double t, bool is_orig, int remaining,
 	                        Packet* pkt) override;
 

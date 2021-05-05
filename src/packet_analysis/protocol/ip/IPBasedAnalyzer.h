@@ -39,7 +39,7 @@ public:
 
 protected:
 
-	IPBasedAnalyzer(const char* name);
+	IPBasedAnalyzer(const char* name, TransportProto proto, uint32_t mask);
 
 	/**
 	 * Entry point for child classes to call to do the actual heavy lifting for
@@ -83,16 +83,6 @@ protected:
 		}
 
 	/**
-	 * Returns the port mask for an analyzer. Used by IsLikelyServerPort().
-	 */
-	virtual uint32_t GetServerPortMask() const = 0;
-
-	/**
-	 * Returns the transport protocol. Used by NewConn().
-	 */
-	virtual TransportProto GetTransportProto() const = 0;
-
-	/**
 	 * Returns true if the port corresponds to an application for which there
 	 * is a Zeek analyzer (even if it might not be used by the present policy
 	 * script) or if it's generally a likely server port.
@@ -124,6 +114,9 @@ protected:
 
 	// TODO: temporary, until all of the plugins are implemented
 	bool new_plugin = false;
+
+	TransportProto transport;
+	uint32_t server_port_mask;
 
 private:
 

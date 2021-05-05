@@ -11,8 +11,8 @@
 using namespace zeek;
 using namespace zeek::packet_analysis::IP;
 
-IPBasedAnalyzer::IPBasedAnalyzer(const char* name)
-	: zeek::packet_analysis::Analyzer(name)
+IPBasedAnalyzer::IPBasedAnalyzer(const char* name, TransportProto proto, uint32_t mask)
+	: zeek::packet_analysis::Analyzer(name), transport(proto), server_port_mask(mask)
 	{
 	}
 
@@ -162,7 +162,7 @@ bool IPBasedAnalyzer::IsLikelyServerPort(uint32_t port) const
 		}
 
 	// We exploit our knowledge of PortVal's internal storage mechanism here.
-	port |= GetServerPortMask();
+	port |= server_port_mask;
 
 	return port_cache.find(port) != port_cache.end();
 	}
@@ -179,7 +179,7 @@ zeek::Connection* IPBasedAnalyzer::NewConn(const ConnTuple* id, const detail::Co
 
 	Connection* conn = new Connection(key, run_state::processing_start_time,
 	                                  id, pkt->ip_hdr->FlowLabel(), pkt);
-	conn->SetTransport(GetTransportProto());
+	conn->SetTransport(transport);
 
 	if ( flip )
 		conn->FlipRoles();
