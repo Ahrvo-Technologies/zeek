@@ -262,8 +262,8 @@ bool IPAnalyzer::AnalyzePacket(size_t len, const uint8_t* data, Packet* packet)
 	return return_val;
 	}
 
-int zeek::packet_analysis::IP::ParseIPPacket(int caplen, const u_char* const pkt, int proto,
-                                             zeek::IP_Hdr*& inner)
+int zeek::packet_analysis::IP::ParsePacket(int caplen, const u_char* const pkt, int proto,
+                                           std::unique_ptr<zeek::IP_Hdr>& inner)
 	{
 	if ( proto == IPPROTO_IPV6 )
 		{
@@ -271,7 +271,7 @@ int zeek::packet_analysis::IP::ParseIPPacket(int caplen, const u_char* const pkt
 			return -1;
 
 		const struct ip6_hdr* ip6 = (const struct ip6_hdr*) pkt;
-		inner = new zeek::IP_Hdr(ip6, false, caplen);
+		inner = std::make_unique<zeek::IP_Hdr>(ip6, false, caplen);
 		if ( ( ip6->ip6_ctlun.ip6_un2_vfc & 0xF0 ) != 0x60 )
 			return -2;
 		}
@@ -282,14 +282,14 @@ int zeek::packet_analysis::IP::ParseIPPacket(int caplen, const u_char* const pkt
 			return -1;
 
 		const struct ip* ip4 = (const struct ip*) pkt;
-		inner = new zeek::IP_Hdr(ip4, false);
+		inner = std::make_unique<zeek::IP_Hdr>(ip4, false);
 		if ( ip4->ip_v != 4 )
 			return -2;
 		}
 
 	else
 		{
-		zeek::reporter->InternalWarning("Bad IP protocol version in ParseIPPacket");
+		zeek::reporter->InternalWarning("Bad IP protocol version in IP::ParsePacket");
 		return -1;
 		}
 
