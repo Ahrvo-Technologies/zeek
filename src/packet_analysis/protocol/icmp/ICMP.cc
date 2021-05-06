@@ -62,15 +62,13 @@ bool ICMPAnalyzer::BuildConnTuple(size_t len, const uint8_t* data, Packet* packe
 
 void ICMPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int remaining, Packet* pkt)
 	{
-	conn = c;
-	session_analyzer = static_cast<IPBasedTransportAnalyzer*>(conn->GetRootAnalyzer());
-	auto* ta = static_cast<ICMPTransportAnalyzer*>(session_analyzer);
+	auto* ta = static_cast<ICMPTransportAnalyzer*>(c->GetRootAnalyzer());
 
 	const u_char* data = pkt->ip_hdr->Payload();
 	int len = pkt->ip_hdr->PayloadLen();
 
 	if ( packet_contents && len > 0 )
-		session_analyzer->PacketContents(data + 8, std::min(len, remaining) - 8);
+		ta->PacketContents(data + 8, std::min(len, remaining) - 8);
 
 	const struct icmp* icmpp = (const struct icmp*) data;
 	const std::unique_ptr<IP_Hdr>& ip = pkt->ip_hdr;
@@ -98,16 +96,13 @@ void ICMPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int rema
 
 		if ( chksum != 0xffff )
 			{
-			session_analyzer->Weird("bad_ICMP_checksum");
+			ta->Weird("bad_ICMP_checksum");
 			return;
 			}
 		}
 
 	c->SetLastTime(run_state::current_timestamp);
 	ta->InitEndpointMatcher(ip.get(), len, is_orig);
-
-	type = icmpp->icmp_type;
-	code = icmpp->icmp_code;
 
 	// Move past common portion of ICMP header.
 	data += 8;
@@ -117,9 +112,9 @@ void ICMPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int rema
 	ta->UpdateLength(is_orig, len);
 
 	if ( ip->NextProto() == IPPROTO_ICMP )
-		NextICMP4(run_state::current_timestamp, icmpp, len, remaining, data, ip.get());
+		NextICMP4(run_state::current_timestamp, icmpp, len, remaining, data, ip.get(), ta);
 	else if ( ip->NextProto() == IPPROTO_ICMPV6 )
-		NextICMP6(run_state::current_timestamp, icmpp, len, remaining, data, ip.get());
+		NextICMP6(run_state::current_timestamp, icmpp, len, remaining, data, ip.get(), ta);
 	else
 		{
 		reporter->Error("expected ICMP as IP packet's protocol, got %d", ip->NextProto());
@@ -129,44 +124,43 @@ void ICMPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int rema
 	ForwardPacket(len, data, pkt);
 
 	if ( remaining >= len )
-		session_analyzer->ForwardPacket(len, data, is_orig, -1, ip.get(), remaining);
+		ta->ForwardPacket(len, data, is_orig, -1, ip.get(), remaining);
 
 	ta->MatchEndpoint(data, len, is_orig);
-
-	conn = nullptr;
-	session_analyzer = nullptr;
 	}
 
 void ICMPAnalyzer::NextICMP4(double t, const struct icmp* icmpp, int len, int caplen,
-                             const u_char*& data, const IP_Hdr* ip_hdr )
+                             const u_char*& data, const IP_Hdr* ip_hdr,
+                             ICMPTransportAnalyzer* analyzer)
 	{
 	switch ( icmpp->icmp_type )
 		{
 		case ICMP_ECHO:
 		case ICMP_ECHOREPLY:
-			Echo(t, icmpp, len, caplen, data, ip_hdr);
+			Echo(t, icmpp, len, caplen, data, ip_hdr, analyzer);
 			break;
 
 		case ICMP_UNREACH:
 		case ICMP_TIMXCEED:
-			Context4(t, icmpp, len, caplen, data, ip_hdr);
+			Context4(t, icmpp, len, caplen, data, ip_hdr, analyzer);
 			break;
 
 		default:
-			ICMP_Sent(icmpp, len, caplen, 0, data, ip_hdr);
+			ICMP_Sent(icmpp, len, caplen, 0, data, ip_hdr, analyzer);
 			break;
 		}
 	}
 
 void ICMPAnalyzer::NextICMP6(double t, const struct icmp* icmpp, int len, int caplen,
-                             const u_char*& data, const IP_Hdr* ip_hdr )
+                             const u_char*& data, const IP_Hdr* ip_hdr,
+                             ICMPTransportAnalyzer* analyzer)
 	{
 	switch ( icmpp->icmp_type )
 		{
 		// Echo types.
 		case ICMP6_ECHO_REQUEST:
 		case ICMP6_ECHO_REPLY:
-			Echo(t, icmpp, len, caplen, data, ip_hdr);
+			Echo(t, icmpp, len, caplen, data, ip_hdr, analyzer);
 			break;
 
 		// Error messages all have the same structure for their context,
@@ -175,27 +169,27 @@ void ICMPAnalyzer::NextICMP6(double t, const struct icmp* icmpp, int len, int ca
 		case ICMP6_TIME_EXCEEDED:
 		case ICMP6_PACKET_TOO_BIG:
 		case ICMP6_DST_UNREACH:
-			Context6(t, icmpp, len, caplen, data, ip_hdr);
+			Context6(t, icmpp, len, caplen, data, ip_hdr, analyzer);
 			break;
 
 		// Router related messages.
 		case ND_REDIRECT:
-			Redirect(t, icmpp, len, caplen, data, ip_hdr);
+			Redirect(t, icmpp, len, caplen, data, ip_hdr, analyzer);
 			break;
 		case ND_ROUTER_ADVERT:
-			RouterAdvert(t, icmpp, len, caplen, data, ip_hdr);
+			RouterAdvert(t, icmpp, len, caplen, data, ip_hdr, analyzer);
 			break;
 		case ND_NEIGHBOR_ADVERT:
-			NeighborAdvert(t, icmpp, len, caplen, data, ip_hdr);
+			NeighborAdvert(t, icmpp, len, caplen, data, ip_hdr, analyzer);
 			break;
 		case ND_NEIGHBOR_SOLICIT:
-			NeighborSolicit(t, icmpp, len, caplen, data, ip_hdr);
+			NeighborSolicit(t, icmpp, len, caplen, data, ip_hdr, analyzer);
 			break;
 		case ND_ROUTER_SOLICIT:
-			RouterSolicit(t, icmpp, len, caplen, data, ip_hdr);
+			RouterSolicit(t, icmpp, len, caplen, data, ip_hdr, analyzer);
 			break;
 		case ICMP6_ROUTER_RENUMBERING:
-			ICMP_Sent(icmpp, len, caplen, 1, data, ip_hdr);
+			ICMP_Sent(icmpp, len, caplen, 1, data, ip_hdr, analyzer);
 			break;
 
 #if 0
@@ -209,29 +203,28 @@ void ICMPAnalyzer::NextICMP6(double t, const struct icmp* icmpp, int len, int ca
 			// the same structure for their context, and are
 			// handled by the same function.
 			if ( icmpp->icmp_type < 128 )
-				Context6(t, icmpp, len, caplen, data, ip_hdr);
+				Context6(t, icmpp, len, caplen, data, ip_hdr, analyzer);
 			else
-				ICMP_Sent(icmpp, len, caplen, 1, data, ip_hdr);
+				ICMP_Sent(icmpp, len, caplen, 1, data, ip_hdr, analyzer);
 			break;
 		}
 	}
 
 void ICMPAnalyzer::ICMP_Sent(const struct icmp* icmpp, int len, int caplen,
-                             int icmpv6, const u_char* data,
-                             const IP_Hdr* ip_hdr)
+                             int icmpv6, const u_char* data, const IP_Hdr* ip_hdr,
+                             ICMPTransportAnalyzer* analyzer)
     {
 	if ( icmp_sent )
-		session_analyzer->EnqueueConnEvent(icmp_sent, session_analyzer->ConnVal(),
-		                                   BuildInfo(icmpp, len, icmpv6, ip_hdr)
-		);
+		analyzer->EnqueueConnEvent(icmp_sent, analyzer->ConnVal(),
+		                           BuildInfo(icmpp, len, icmpv6, ip_hdr));
 
 	if ( icmp_sent_payload )
 		{
 		String* payload = new String(data, std::min(len, caplen), false);
 
-		session_analyzer->EnqueueConnEvent(icmp_sent_payload, session_analyzer->ConnVal(),
-		                                   BuildInfo(icmpp, len, icmpv6, ip_hdr),
-		                                   make_intrusive<StringVal>(payload));
+		analyzer->EnqueueConnEvent(icmp_sent_payload, analyzer->ConnVal(),
+		                           BuildInfo(icmpp, len, icmpv6, ip_hdr),
+		                           make_intrusive<StringVal>(payload));
 		}
 	}
 
@@ -444,7 +437,8 @@ zeek::RecordValPtr ICMPAnalyzer::ExtractICMP6Context(int len, const u_char*& dat
 	}
 
 void ICMPAnalyzer::Echo(double t, const struct icmp* icmpp, int len,
-					 int caplen, const u_char*& data, const IP_Hdr* ip_hdr)
+                        int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+                        ICMPTransportAnalyzer* analyzer)
 	{
 	// For handling all Echo related ICMP messages
 	EventHandlerPtr f = nullptr;
@@ -464,8 +458,8 @@ void ICMPAnalyzer::Echo(double t, const struct icmp* icmpp, int len,
 
 	String* payload = new String(data, caplen, false);
 
-	session_analyzer->EnqueueConnEvent(f,
-		session_analyzer->ConnVal(),
+	analyzer->EnqueueConnEvent(f,
+		analyzer->ConnVal(),
 		BuildInfo(icmpp, len, ip_hdr->NextProto() != IPPROTO_ICMP, ip_hdr),
 		val_mgr->Count(iid),
 		val_mgr->Count(iseq),
@@ -475,7 +469,8 @@ void ICMPAnalyzer::Echo(double t, const struct icmp* icmpp, int len,
 
 
 void ICMPAnalyzer::RouterAdvert(double t, const struct icmp* icmpp, int len,
-                                 int caplen, const u_char*& data, const IP_Hdr* ip_hdr)
+                                int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+                                ICMPTransportAnalyzer* analyzer)
 	{
 	EventHandlerPtr f = icmp_router_advertisement;
 
@@ -492,8 +487,8 @@ void ICMPAnalyzer::RouterAdvert(double t, const struct icmp* icmpp, int len,
 
 	int opt_offset = sizeof(reachable) + sizeof(retrans);
 
-	session_analyzer->EnqueueConnEvent(f,
-		session_analyzer->ConnVal(),
+	analyzer->EnqueueConnEvent(f,
+		analyzer->ConnVal(),
 		BuildInfo(icmpp, len, 1, ip_hdr),
 		val_mgr->Count(icmpp->icmp_num_addrs), // Cur Hop Limit
 		val_mgr->Bool(icmpp->icmp_wpa & 0x80), // Managed
@@ -505,13 +500,14 @@ void ICMPAnalyzer::RouterAdvert(double t, const struct icmp* icmpp, int len,
 		make_intrusive<IntervalVal>((double)ntohs(icmpp->icmp_lifetime), Seconds),
 		make_intrusive<IntervalVal>((double)ntohl(reachable), Milliseconds),
 		make_intrusive<IntervalVal>((double)ntohl(retrans), Milliseconds),
-		BuildNDOptionsVal(caplen - opt_offset, data + opt_offset)
+		BuildNDOptionsVal(caplen - opt_offset, data + opt_offset, analyzer)
 	);
 	}
 
 
 void ICMPAnalyzer::NeighborAdvert(double t, const struct icmp* icmpp, int len,
-			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr)
+                                  int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+                                  ICMPTransportAnalyzer* analyzer)
 	{
 	EventHandlerPtr f = icmp_neighbor_advertisement;
 
@@ -525,20 +521,21 @@ void ICMPAnalyzer::NeighborAdvert(double t, const struct icmp* icmpp, int len,
 
 	int opt_offset = sizeof(in6_addr);
 
-	session_analyzer->EnqueueConnEvent(f,
-		session_analyzer->ConnVal(),
+	analyzer->EnqueueConnEvent(f,
+		analyzer->ConnVal(),
 		BuildInfo(icmpp, len, 1, ip_hdr),
 		val_mgr->Bool(icmpp->icmp_num_addrs & 0x80), // Router
 		val_mgr->Bool(icmpp->icmp_num_addrs & 0x40), // Solicited
 		val_mgr->Bool(icmpp->icmp_num_addrs & 0x20), // Override
 		make_intrusive<AddrVal>(tgtaddr),
-		BuildNDOptionsVal(caplen - opt_offset, data + opt_offset)
+		BuildNDOptionsVal(caplen - opt_offset, data + opt_offset, analyzer)
 	);
 	}
 
 
 void ICMPAnalyzer::NeighborSolicit(double t, const struct icmp* icmpp, int len,
-			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr)
+                                   int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+                                   ICMPTransportAnalyzer* analyzer)
 	{
 	EventHandlerPtr f = icmp_neighbor_solicitation;
 
@@ -552,17 +549,18 @@ void ICMPAnalyzer::NeighborSolicit(double t, const struct icmp* icmpp, int len,
 
 	int opt_offset = sizeof(in6_addr);
 
-	session_analyzer->EnqueueConnEvent(f,
-		session_analyzer->ConnVal(),
+	analyzer->EnqueueConnEvent(f,
+		analyzer->ConnVal(),
 		BuildInfo(icmpp, len, 1, ip_hdr),
 		make_intrusive<AddrVal>(tgtaddr),
-		BuildNDOptionsVal(caplen - opt_offset, data + opt_offset)
+		BuildNDOptionsVal(caplen - opt_offset, data + opt_offset, analyzer)
 	);
 	}
 
 
 void ICMPAnalyzer::Redirect(double t, const struct icmp* icmpp, int len,
-			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr)
+                            int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+                            ICMPTransportAnalyzer* analyzer)
 	{
 	EventHandlerPtr f = icmp_redirect;
 
@@ -579,34 +577,36 @@ void ICMPAnalyzer::Redirect(double t, const struct icmp* icmpp, int len,
 
 	int opt_offset = 2 * sizeof(in6_addr);
 
-	session_analyzer->EnqueueConnEvent(f,
-		session_analyzer->ConnVal(),
+	analyzer->EnqueueConnEvent(f,
+		analyzer->ConnVal(),
 		BuildInfo(icmpp, len, 1, ip_hdr),
 		make_intrusive<AddrVal>(tgtaddr),
 		make_intrusive<AddrVal>(dstaddr),
-		BuildNDOptionsVal(caplen - opt_offset, data + opt_offset)
+		BuildNDOptionsVal(caplen - opt_offset, data + opt_offset, analyzer)
 	);
 	}
 
 
 void ICMPAnalyzer::RouterSolicit(double t, const struct icmp* icmpp, int len,
-			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr)
+                                 int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+                                 ICMPTransportAnalyzer* analyzer)
 	{
 	EventHandlerPtr f = icmp_router_solicitation;
 
 	if ( ! f )
 		return;
 
-	session_analyzer->EnqueueConnEvent(f,
-		session_analyzer->ConnVal(),
+	analyzer->EnqueueConnEvent(f,
+		analyzer->ConnVal(),
 		BuildInfo(icmpp, len, 1, ip_hdr),
-		BuildNDOptionsVal(caplen, data)
+		BuildNDOptionsVal(caplen, data, analyzer)
 	);
 	}
 
 
-void ICMPAnalyzer::Context4(double t, const struct icmp* icmpp,
-		int len, int caplen, const u_char*& data, const IP_Hdr* ip_hdr)
+void ICMPAnalyzer::Context4(double t, const struct icmp* icmpp, int len,
+                            int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+                            ICMPTransportAnalyzer* analyzer)
 	{
 	EventHandlerPtr f = nullptr;
 
@@ -622,8 +622,8 @@ void ICMPAnalyzer::Context4(double t, const struct icmp* icmpp,
 		}
 
 	if ( f )
-		session_analyzer->EnqueueConnEvent(f,
-			session_analyzer->ConnVal(),
+		analyzer->EnqueueConnEvent(f,
+			analyzer->ConnVal(),
 			BuildInfo(icmpp, len, 0, ip_hdr),
 			val_mgr->Count(icmpp->icmp_code),
 			ExtractICMP4Context(caplen, data)
@@ -631,9 +631,9 @@ void ICMPAnalyzer::Context4(double t, const struct icmp* icmpp,
 	}
 
 
-void ICMPAnalyzer::Context6(double t, const struct icmp* icmpp,
-                            int len, int caplen, const u_char*& data,
-                            const IP_Hdr* ip_hdr)
+void ICMPAnalyzer::Context6(double t, const struct icmp* icmpp, int len,
+                            int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+                            ICMPTransportAnalyzer* analyzer)
 	{
 	EventHandlerPtr f = nullptr;
 
@@ -661,15 +661,16 @@ void ICMPAnalyzer::Context6(double t, const struct icmp* icmpp,
 		}
 
 	if ( f )
-		session_analyzer->EnqueueConnEvent(f,
-			session_analyzer->ConnVal(),
+		analyzer->EnqueueConnEvent(f,
+			analyzer->ConnVal(),
 			BuildInfo(icmpp, len, 1, ip_hdr),
 			val_mgr->Count(icmpp->icmp_code),
 			ExtractICMP6Context(caplen, data)
 		);
 	}
 
-zeek::VectorValPtr ICMPAnalyzer::BuildNDOptionsVal(int caplen, const u_char* data)
+zeek::VectorValPtr ICMPAnalyzer::BuildNDOptionsVal(int caplen, const u_char* data,
+                                                   ICMPTransportAnalyzer* analyzer)
 	{
 	static auto icmp6_nd_option_type = id::find_type<RecordType>("icmp6_nd_option");
 	static auto icmp6_nd_prefix_info_type = id::find_type<RecordType>("icmp6_nd_prefix_info");
@@ -682,7 +683,7 @@ zeek::VectorValPtr ICMPAnalyzer::BuildNDOptionsVal(int caplen, const u_char* dat
 		// Must have at least type & length to continue parsing options.
 		if ( caplen < 2 )
 			{
-			conn->GetRootAnalyzer()->Weird("truncated_ICMPv6_ND_options");
+			analyzer->Weird("truncated_ICMPv6_ND_options");
 			break;
 			}
 
@@ -691,7 +692,7 @@ zeek::VectorValPtr ICMPAnalyzer::BuildNDOptionsVal(int caplen, const u_char* dat
 
 		if ( length == 0 )
 			{
-			conn->GetRootAnalyzer()->Weird("zero_length_ICMPv6_ND_option");
+			analyzer->Weird("zero_length_ICMPv6_ND_option");
 			break;
 			}
 
@@ -861,7 +862,7 @@ int ICMPAnalyzer::ICMP6_counterpart(int icmp_type, int icmp_code, bool& is_one_w
 void ICMPAnalyzer::CreateTransportAnalyzer(Connection* conn, IPBasedTransportAnalyzer*& root,
                                            analyzer::pia::PIA*& pia, bool& check_port)
 	{
-	session_analyzer = root = new ICMPTransportAnalyzer(conn);
+	root = new ICMPTransportAnalyzer(conn);
 	root->SetParent(this);
 	conn->SetInactivityTimeout(zeek::detail::icmp_inactivity_timeout);
 

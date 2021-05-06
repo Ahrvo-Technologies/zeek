@@ -103,13 +103,6 @@ protected:
 	 */
 	bool IsLikelyServerPort(uint32_t port) const;
 
-	/**
-	 * The entry point to the session analysis framework. This should be reset between calls
-	 * to ContinueProcessing(), as a packet analyzer should not maintain any state between
-	 * packets.
-	 */
-	IPBasedTransportAnalyzer* session_analyzer;
-
 	// TODO: temporary, until all of the plugins are implemented
 	bool new_plugin = false;
 

@@ -37,7 +37,7 @@ UDPAnalyzer::~UDPAnalyzer()
 void UDPAnalyzer::CreateTransportAnalyzer(Connection* conn, IPBasedTransportAnalyzer*& root,
                                           analyzer::pia::PIA*& pia, bool& check_port)
 	{
-	session_analyzer = root = new UDPTransportAnalyzer(conn);
+	root = new UDPTransportAnalyzer(conn);
 	root->SetParent(this);
 
 	conn->EnableStatusUpdateTimer();
@@ -92,8 +92,8 @@ bool UDPAnalyzer::BuildConnTuple(size_t len, const uint8_t* data, Packet* packet
 void UDPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int remaining, Packet* pkt)
 	{
 	conn = c;
-	session_analyzer = static_cast<IPBasedTransportAnalyzer*>(conn->GetRootAnalyzer());
-	auto* ta = static_cast<UDPTransportAnalyzer*>(session_analyzer);
+
+	auto* ta = static_cast<UDPTransportAnalyzer*>(conn->GetRootAnalyzer());
 
 	const u_char* data = pkt->ip_hdr->Payload();
 	int len = pkt->ip_hdr->PayloadLen();
@@ -111,7 +111,7 @@ void UDPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int remai
 	// We need the min() here because Ethernet frame padding can lead to
 	// remaining > len.
 	if ( packet_contents )
-		session_analyzer->PacketContents(data, std::min(len, remaining) - sizeof(struct udphdr));
+		ta->PacketContents(data, std::min(len, remaining) - sizeof(struct udphdr));
 
 	int chksum = up->uh_sum;
 
@@ -157,7 +157,7 @@ void UDPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int remai
 
 		if ( bad )
 			{
-			session_analyzer->Weird("bad_UDP_checksum");
+			ta->Weird("bad_UDP_checksum");
 
 			if ( is_orig )
 				{
@@ -184,7 +184,7 @@ void UDPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int remai
 
 	int ulen = ntohs(up->uh_ulen);
 	if ( ulen != len )
-		session_analyzer->Weird("UDP_datagram_length_mismatch", util::fmt("%d != %d", ulen, len));
+		ta->Weird("UDP_datagram_length_mismatch", util::fmt("%d != %d", ulen, len));
 
 	len -= sizeof(struct udphdr);
 	ulen -= sizeof(struct udphdr);
@@ -227,23 +227,23 @@ void UDPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int remai
 			}
 
 		if ( do_udp_contents )
-			session_analyzer->EnqueueConnEvent(udp_contents,
-			                                   session_analyzer->ConnVal(),
-			                                   val_mgr->Bool(is_orig),
-			                                   make_intrusive<StringVal>(len, (const char*) data));
+			ta->EnqueueConnEvent(udp_contents,
+			                     ta->ConnVal(),
+			                     val_mgr->Bool(is_orig),
+			                     make_intrusive<StringVal>(len, (const char*) data));
 		}
 
 	if ( is_orig )
 		{
 		conn->CheckHistory(HIST_ORIG_DATA_PKT, 'D');
 		ta->UpdateLength(is_orig, ulen);
-		session_analyzer->Event(udp_request);
+		ta->Event(udp_request);
 		}
 	else
 		{
 		conn->CheckHistory(HIST_RESP_DATA_PKT, 'd');
 		ta->UpdateLength(is_orig, ulen);
-		session_analyzer->Event(udp_reply);
+		ta->Event(udp_reply);
 		}
 
 	// Send the packet back into the packet analysis framework.
@@ -251,10 +251,9 @@ void UDPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int remai
 
 	// Also try sending it into session analysis.
 	if ( remaining >= len )
-		session_analyzer->ForwardPacket(len, data, is_orig, -1, ip.get(), remaining);
+		ta->ForwardPacket(len, data, is_orig, -1, ip.get(), remaining);
 
 	conn = nullptr;
-	session_analyzer = nullptr;
 	}
 
 bool UDPAnalyzer::ValidateChecksum(const IP_Hdr* ip, const udphdr* up, int len)

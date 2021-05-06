@@ -17,6 +17,8 @@ using RecordValPtr = IntrusivePtr<RecordVal>;
 
 namespace packet_analysis::ICMP {
 
+class ICMPTransportAnalyzer;
+
 class ICMPAnalyzer final : public IP::IPBasedAnalyzer {
 public:
 	ICMPAnalyzer();
@@ -43,46 +45,58 @@ protected:
 
 private:
 
+	void NextICMP4(double t, const struct icmp* icmpp, int len, int caplen,
+	               const u_char*& data, const IP_Hdr* ip_hdr,
+	               ICMPTransportAnalyzer* analyzer);
+
+	void NextICMP6(double t, const struct icmp* icmpp, int len, int caplen,
+	               const u_char*& data, const IP_Hdr* ip_hdr,
+	               ICMPTransportAnalyzer* analyzer);
+
 	void ICMP_Sent(const struct icmp* icmpp, int len, int caplen, int icmpv6,
-	               const u_char* data, const IP_Hdr* ip_hdr);
+	               const u_char* data, const IP_Hdr* ip_hdr,
+	               ICMPTransportAnalyzer* analyzer);
 
 	void Echo(double t, const struct icmp* icmpp, int len,
-			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+	          int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+	          ICMPTransportAnalyzer* analyzer);
 	void Redirect(double t, const struct icmp* icmpp, int len,
-			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+	              int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+	              ICMPTransportAnalyzer* analyzer);
 	void RouterAdvert(double t, const struct icmp* icmpp, int len,
-			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+	                  int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+	                  ICMPTransportAnalyzer* analyzer);
 	void NeighborAdvert(double t, const struct icmp* icmpp, int len,
-			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+	                    int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+	                    ICMPTransportAnalyzer* analyzer);
 	void NeighborSolicit(double t, const struct icmp* icmpp, int len,
-			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+	                     int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+	                     ICMPTransportAnalyzer* analyzer);
 	void RouterSolicit(double t, const struct icmp* icmpp, int len,
-			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+	                   int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
+	                   ICMPTransportAnalyzer* analyzer);
 
 	RecordValPtr BuildInfo(const struct icmp* icmpp, int len,
 	                       bool icmpv6, const IP_Hdr* ip_hdr);
 
-	void NextICMP4(double t, const struct icmp* icmpp, int len, int caplen,
-	               const u_char*& data, const IP_Hdr* ip_hdr );
-
 	RecordValPtr ExtractICMP4Context(int len, const u_char*& data);
 
 	void Context4(double t, const struct icmp* icmpp, int len, int caplen,
-	              const u_char*& data, const IP_Hdr* ip_hdr);
+	              const u_char*& data, const IP_Hdr* ip_hdr,
+	              ICMPTransportAnalyzer* analyzer);
 
 	TransportProto GetContextProtocol(const IP_Hdr* ip_hdr, uint32_t* src_port,
 	                                  uint32_t* dst_port);
 
-	void NextICMP6(double t, const struct icmp* icmpp, int len, int caplen,
-	               const u_char*& data, const IP_Hdr* ip_hdr );
-
 	RecordValPtr ExtractICMP6Context(int len, const u_char*& data);
 
 	void Context6(double t, const struct icmp* icmpp, int len, int caplen,
-	              const u_char*& data, const IP_Hdr* ip_hdr);
+	              const u_char*& data, const IP_Hdr* ip_hdr,
+	              ICMPTransportAnalyzer* analyzer);
 
 	// RFC 4861 Neighbor Discover message options
-	VectorValPtr BuildNDOptionsVal(int caplen, const u_char* data);
+	VectorValPtr BuildNDOptionsVal(int caplen, const u_char* data,
+	                               ICMPTransportAnalyzer* analyzer);
 
 	void UpdateEndpointVal(const ValPtr& endp, bool is_orig);
 
@@ -90,11 +104,6 @@ private:
 	// to ICMP_ECHOREPLY is ICMP_ECHO).
 	int ICMP4_counterpart(int icmp_type, int icmp_code, bool& is_one_way);
 	int ICMP6_counterpart(int icmp_type, int icmp_code, bool& is_one_way);
-
-	int type;
-	int code;
-
-	Connection* conn;
 	};
 
 class ICMPTransportAnalyzer final : public IP::IPBasedTransportAnalyzer {
