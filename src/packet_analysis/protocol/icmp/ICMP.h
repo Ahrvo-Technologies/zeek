@@ -22,8 +22,6 @@ public:
 	ICMPAnalyzer();
 	~ICMPAnalyzer() override;
 
-	bool AnalyzePacket(size_t len, const uint8_t* data, Packet* packet) override;
-
 	static zeek::packet_analysis::AnalyzerPtr Instantiate()
 		{
 		return std::make_shared<ICMPAnalyzer>();
@@ -34,7 +32,13 @@ public:
 
 protected:
 
-	void ContinueProcessing(Connection* c, double t, bool is_orig, int remaining,
+	/**
+	 * Parse the header from the packet into a ConnTuple object.
+	 */
+	bool BuildConnTuple(size_t len, const uint8_t* data, Packet* packet,
+	                    ConnTuple& tuple) override;
+
+	void DeliverPacket(Connection* c, double t, bool is_orig, int remaining,
 	                        Packet* pkt) override;
 
 private:
