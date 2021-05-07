@@ -171,6 +171,7 @@ public:
 	bool operator!=( const DictIterator& that ) const { return !(*this == that); }
 
 private:
+
 	friend class Dictionary;
 
 	DictIterator() = default;
