@@ -267,6 +267,7 @@ TEST_CASE("dict new iteration")
 
 	PDict<uint32_t>::iterator it;
 	it = dict.begin();
+	it = dict.end();
 	PDict<uint32_t>::iterator it2 = it;
 
 	CHECK(count == 2);
@@ -1586,6 +1587,12 @@ DictIterator::DictIterator(const DictIterator& that)
 	if ( this == &that )
 		return;
 
+	if ( dict )
+		{
+		assert(dict->num_iterators > 0);
+		dict->num_iterators--;
+		}
+
 	dict = that.dict;
 	curr = that.curr;
 	end = that.end;
@@ -1596,6 +1603,12 @@ DictIterator& DictIterator::operator=(const DictIterator& that)
 	{
 	if ( this == &that )
 		return *this;
+
+	if ( dict )
+		{
+		assert(dict->num_iterators > 0);
+		dict->num_iterators--;
+		}
 
 	dict = that.dict;
 	curr = that.curr;
@@ -1610,6 +1623,12 @@ DictIterator::DictIterator(DictIterator&& that)
 	if ( this == &that )
 		return;
 
+	if ( dict )
+		{
+		assert(dict->num_iterators > 0);
+		dict->num_iterators--;
+		}
+
 	dict = that.dict;
 	curr = that.curr;
 	end = that.end;
@@ -1621,6 +1640,12 @@ DictIterator& DictIterator::operator=(DictIterator&& that)
 	{
 	if ( this == &that )
 		return *this;
+
+	if ( dict )
+		{
+		assert(dict->num_iterators > 0);
+		dict->num_iterators--;
+		}
 
 	dict = that.dict;
 	curr = that.curr;
