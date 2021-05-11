@@ -12,6 +12,7 @@
 #include "zeek/analyzer/protocol/stepping-stone/SteppingStone.h"
 #include "zeek/analyzer/protocol/tcp/TCP.h"
 #include "zeek/packet_analysis/protocol/ip/IPBasedAnalyzer.h"
+#include "zeek/packet_analysis/protocol/ip/AnalyzerAdapter.h"
 
 #include "zeek/plugin/Manager.h"
 
@@ -356,7 +357,7 @@ Manager::tag_set* Manager::LookupPort(TransportProto proto, uint32_t port, bool 
 bool Manager::BuildInitialAnalyzerTree(Connection* conn)
 	{
 	analyzer::tcp::TCP_Analyzer* tcp = nullptr;
-	TransportLayerAnalyzer* root = nullptr;
+	packet_analysis::IP::AnalyzerAdapter* root = nullptr;
 	analyzer::pia::PIA* pia = nullptr;
 	bool check_port = false;
 
@@ -588,7 +589,8 @@ Manager::tag_set Manager::GetScheduled(const Connection* conn)
 	return result;
 	}
 
-bool Manager::ApplyScheduledAnalyzers(Connection* conn, bool init, TransportLayerAnalyzer* parent)
+bool Manager::ApplyScheduledAnalyzers(Connection* conn, bool init,
+                                      packet_analysis::IP::AnalyzerAdapter* parent)
 	{
 	if ( ! parent )
 		parent = conn->GetRootAnalyzer();

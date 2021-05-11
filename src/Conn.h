@@ -41,12 +41,8 @@ class RuleHdrTest;
 
 } // namespace detail
 
-namespace analyzer {
-
-class TransportLayerAnalyzer;
-class Analyzer;
-
-} // namespace analyzer
+namespace analyzer { class Analyzer; }
+namespace packet_analysis::IP { class AnalyzerAdapter; }
 
 enum ConnEventToFlag {
 	NUL_IN_LINE,
@@ -231,8 +227,8 @@ public:
 	void AddHistory(char code)	{ history += code; }
 
 	// Sets the root of the analyzer tree as well as the primary PIA.
-	void SetRootAnalyzer(analyzer::TransportLayerAnalyzer* analyzer, analyzer::pia::PIA* pia);
-	analyzer::TransportLayerAnalyzer* GetRootAnalyzer()	{ return root_analyzer; }
+	void SetRootAnalyzer(packet_analysis::IP::AnalyzerAdapter* analyzer, analyzer::pia::PIA* pia);
+	packet_analysis::IP::AnalyzerAdapter* GetRootAnalyzer()	{ return root_analyzer; }
 	analyzer::pia::PIA* GetPrimaryPIA()	{ return primary_PIA; }
 
 	// Sets the transport protocol in use.
@@ -279,7 +275,7 @@ private:
 	uint32_t hist_seen;
 	std::string history;
 
-	analyzer::TransportLayerAnalyzer* root_analyzer;
+	packet_analysis::IP::AnalyzerAdapter* root_analyzer;
 	analyzer::pia::PIA* primary_PIA;
 
 	UID uid;	// Globally unique connection ID.

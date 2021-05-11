@@ -216,7 +216,7 @@ zeek::Connection* IPBasedAnalyzer::NewConn(const ConnTuple* id, const detail::Co
 
 bool IPBasedAnalyzer::BuildSessionAnalyzerTree(Connection* conn)
 	{
-	packet_analysis::IP::IPBasedTransportAnalyzer* root = MakeTransportAnalyzer(conn);
+	AnalyzerAdapter* root = MakeAnalyzerAdapter(conn);
 	analyzer::pia::PIA* pia = MakePIA(conn);
 
 	// TODO: temporary, can be replaced when the port lookup stuff is moved from analyzer_mgr

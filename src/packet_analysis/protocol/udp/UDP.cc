@@ -34,9 +34,9 @@ UDPAnalyzer::~UDPAnalyzer()
 	{
 	}
 
-IPBasedTransportAnalyzer* UDPAnalyzer::MakeTransportAnalyzer(Connection* conn)
+AnalyzerAdapter* UDPAnalyzer::MakeAnalyzerAdapter(Connection* conn)
 	{
-	auto* root = new UDPTransportAnalyzer(conn);
+	auto* root = new UDPAnalyzerAdapter(conn);
 	root->SetParent(this);
 
 	conn->EnableStatusUpdateTimer();
@@ -96,7 +96,7 @@ void UDPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int remai
 	{
 	conn = c;
 
-	auto* ta = static_cast<UDPTransportAnalyzer*>(conn->GetRootAnalyzer());
+	auto* ta = static_cast<UDPAnalyzerAdapter*>(conn->GetRootAnalyzer());
 
 	const u_char* data = pkt->ip_hdr->Payload();
 	int len = pkt->ip_hdr->PayloadLen();
@@ -273,7 +273,7 @@ void UDPAnalyzer::ChecksumEvent(bool is_orig, uint32_t threshold)
 	conn->HistoryThresholdEvent(udp_multiple_checksum_errors, is_orig, threshold);
 	}
 
-void UDPTransportAnalyzer::AddExtraAnalyzers(Connection* conn)
+void UDPAnalyzerAdapter::AddExtraAnalyzers(Connection* conn)
 	{
 	static analyzer::Tag analyzer_connsize = analyzer_mgr->GetComponentTag("CONNSIZE");
 
@@ -282,7 +282,7 @@ void UDPTransportAnalyzer::AddExtraAnalyzers(Connection* conn)
 		AddChildAnalyzer(new analyzer::conn_size::ConnSize_Analyzer(conn));
 	}
 
-void UDPTransportAnalyzer::UpdateConnVal(RecordVal* conn_val)
+void UDPAnalyzerAdapter::UpdateConnVal(RecordVal* conn_val)
 	{
 	auto orig_endp = conn_val->GetField("orig");
 	auto resp_endp = conn_val->GetField("resp");
@@ -294,7 +294,7 @@ void UDPTransportAnalyzer::UpdateConnVal(RecordVal* conn_val)
 	Analyzer::UpdateConnVal(conn_val);
 	}
 
-void UDPTransportAnalyzer::UpdateEndpointVal(const ValPtr& endp_arg, bool is_orig)
+void UDPAnalyzerAdapter::UpdateEndpointVal(const ValPtr& endp_arg, bool is_orig)
 	{
 	bro_int_t size = is_orig ? request_len : reply_len;
 	auto endp = endp_arg->AsRecordVal();
@@ -312,7 +312,7 @@ void UDPTransportAnalyzer::UpdateEndpointVal(const ValPtr& endp_arg, bool is_ori
 		}
 	}
 
-void UDPTransportAnalyzer::UpdateLength(bool is_orig, int len)
+void UDPAnalyzerAdapter::UpdateLength(bool is_orig, int len)
 	{
 	if ( is_orig )
 		{

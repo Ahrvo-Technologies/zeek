@@ -36,7 +36,12 @@
 
 namespace zeek {
 
-namespace packet_analysis::IP { class IPBasedAnalyzer; }
+namespace packet_analysis::IP {
+
+class IPBasedAnalyzer;
+class AnalyzerAdapter;
+
+} // namespace packet_analysis::IP
 
 namespace analyzer {
 
@@ -316,7 +321,7 @@ public:
 	 * @return True if at least one scheduled analyzer was found.
 	 */
 	bool ApplyScheduledAnalyzers(Connection* conn, bool init_and_event = true,
-	                             TransportLayerAnalyzer* parent = nullptr);
+	                             packet_analysis::IP::AnalyzerAdapter* parent = nullptr);
 
 	/**
 	 * Schedules a particular analyzer for an upcoming connection. Once

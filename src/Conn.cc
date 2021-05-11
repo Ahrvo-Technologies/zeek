@@ -19,6 +19,7 @@
 #include "zeek/analyzer/Analyzer.h"
 #include "zeek/analyzer/Manager.h"
 #include "zeek/iosource/IOSource.h"
+#include "zeek/packet_analysis/protocol/ip/AnalyzerAdapter.h"
 
 namespace zeek {
 
@@ -448,7 +449,7 @@ void Connection::IDString(ODesc* d) const
 	d->Add(ntohs(resp_port));
 	}
 
-void Connection::SetRootAnalyzer(analyzer::TransportLayerAnalyzer* analyzer,
+void Connection::SetRootAnalyzer(packet_analysis::IP::AnalyzerAdapter* analyzer,
                                  analyzer::pia::PIA* pia)
 	{
 	root_analyzer = analyzer;

@@ -51,7 +51,7 @@ protected:
 	bool WantConnection(uint16_t src_port, uint16_t dst_port,
 	                    const u_char* data, bool& flip_roles) const override;
 
-	packet_analysis::IP::IPBasedTransportAnalyzer* MakeTransportAnalyzer(Connection* conn) override;
+	packet_analysis::IP::AnalyzerAdapter* MakeAnalyzerAdapter(Connection* conn) override;
 	analyzer::pia::PIA* MakePIA(Connection* conn) override;
 
 private:
@@ -67,16 +67,16 @@ private:
 	std::vector<uint16_t> vxlan_ports;
 };
 
-class UDPTransportAnalyzer final : public IP::IPBasedTransportAnalyzer {
+class UDPAnalyzerAdapter final : public IP::AnalyzerAdapter {
 
 public:
 
-	UDPTransportAnalyzer(Connection* conn) :
-		IP::IPBasedTransportAnalyzer("UDP", conn) { }
+	UDPAnalyzerAdapter(Connection* conn) :
+		IP::AnalyzerAdapter("UDP", conn) { }
 
 	static zeek::analyzer::Analyzer* Instantiate(Connection* conn)
 		{
-		return new UDPTransportAnalyzer(conn);
+		return new UDPAnalyzerAdapter(conn);
 		}
 
 	void AddExtraAnalyzers(Connection* conn) override;

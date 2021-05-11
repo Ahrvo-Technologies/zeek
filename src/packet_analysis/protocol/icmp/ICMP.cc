@@ -36,9 +36,9 @@ ICMPAnalyzer::~ICMPAnalyzer()
 	{
 	}
 
-IPBasedTransportAnalyzer* ICMPAnalyzer::MakeTransportAnalyzer(Connection* conn)
+AnalyzerAdapter* ICMPAnalyzer::MakeAnalyzerAdapter(Connection* conn)
 	{
-	auto* root = new ICMPTransportAnalyzer(conn);
+	auto* root = new ICMPAnalyzerAdapter(conn);
 	root->SetParent(this);
 	conn->SetInactivityTimeout(zeek::detail::icmp_inactivity_timeout);
 
@@ -71,7 +71,7 @@ bool ICMPAnalyzer::BuildConnTuple(size_t len, const uint8_t* data, Packet* packe
 
 void ICMPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int remaining, Packet* pkt)
 	{
-	auto* ta = static_cast<ICMPTransportAnalyzer*>(c->GetRootAnalyzer());
+	auto* ta = static_cast<ICMPAnalyzerAdapter*>(c->GetRootAnalyzer());
 
 	const u_char* data = pkt->ip_hdr->Payload();
 	int len = pkt->ip_hdr->PayloadLen();
@@ -140,7 +140,7 @@ void ICMPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int rema
 
 void ICMPAnalyzer::NextICMP4(double t, const struct icmp* icmpp, int len, int caplen,
                              const u_char*& data, const IP_Hdr* ip_hdr,
-                             ICMPTransportAnalyzer* analyzer)
+                             ICMPAnalyzerAdapter* analyzer)
 	{
 	switch ( icmpp->icmp_type )
 		{
@@ -162,7 +162,7 @@ void ICMPAnalyzer::NextICMP4(double t, const struct icmp* icmpp, int len, int ca
 
 void ICMPAnalyzer::NextICMP6(double t, const struct icmp* icmpp, int len, int caplen,
                              const u_char*& data, const IP_Hdr* ip_hdr,
-                             ICMPTransportAnalyzer* analyzer)
+                             ICMPAnalyzerAdapter* analyzer)
 	{
 	switch ( icmpp->icmp_type )
 		{
@@ -221,7 +221,7 @@ void ICMPAnalyzer::NextICMP6(double t, const struct icmp* icmpp, int len, int ca
 
 void ICMPAnalyzer::ICMP_Sent(const struct icmp* icmpp, int len, int caplen,
                              int icmpv6, const u_char* data, const IP_Hdr* ip_hdr,
-                             ICMPTransportAnalyzer* analyzer)
+                             ICMPAnalyzerAdapter* analyzer)
     {
 	if ( icmp_sent )
 		analyzer->EnqueueConnEvent(icmp_sent, analyzer->ConnVal(),
@@ -447,7 +447,7 @@ zeek::RecordValPtr ICMPAnalyzer::ExtractICMP6Context(int len, const u_char*& dat
 
 void ICMPAnalyzer::Echo(double t, const struct icmp* icmpp, int len,
                         int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
-                        ICMPTransportAnalyzer* analyzer)
+                        ICMPAnalyzerAdapter* analyzer)
 	{
 	// For handling all Echo related ICMP messages
 	EventHandlerPtr f = nullptr;
@@ -479,7 +479,7 @@ void ICMPAnalyzer::Echo(double t, const struct icmp* icmpp, int len,
 
 void ICMPAnalyzer::RouterAdvert(double t, const struct icmp* icmpp, int len,
                                 int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
-                                ICMPTransportAnalyzer* analyzer)
+                                ICMPAnalyzerAdapter* analyzer)
 	{
 	EventHandlerPtr f = icmp_router_advertisement;
 
@@ -516,7 +516,7 @@ void ICMPAnalyzer::RouterAdvert(double t, const struct icmp* icmpp, int len,
 
 void ICMPAnalyzer::NeighborAdvert(double t, const struct icmp* icmpp, int len,
                                   int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
-                                  ICMPTransportAnalyzer* analyzer)
+                                  ICMPAnalyzerAdapter* analyzer)
 	{
 	EventHandlerPtr f = icmp_neighbor_advertisement;
 
@@ -544,7 +544,7 @@ void ICMPAnalyzer::NeighborAdvert(double t, const struct icmp* icmpp, int len,
 
 void ICMPAnalyzer::NeighborSolicit(double t, const struct icmp* icmpp, int len,
                                    int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
-                                   ICMPTransportAnalyzer* analyzer)
+                                   ICMPAnalyzerAdapter* analyzer)
 	{
 	EventHandlerPtr f = icmp_neighbor_solicitation;
 
@@ -569,7 +569,7 @@ void ICMPAnalyzer::NeighborSolicit(double t, const struct icmp* icmpp, int len,
 
 void ICMPAnalyzer::Redirect(double t, const struct icmp* icmpp, int len,
                             int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
-                            ICMPTransportAnalyzer* analyzer)
+                            ICMPAnalyzerAdapter* analyzer)
 	{
 	EventHandlerPtr f = icmp_redirect;
 
@@ -598,7 +598,7 @@ void ICMPAnalyzer::Redirect(double t, const struct icmp* icmpp, int len,
 
 void ICMPAnalyzer::RouterSolicit(double t, const struct icmp* icmpp, int len,
                                  int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
-                                 ICMPTransportAnalyzer* analyzer)
+                                 ICMPAnalyzerAdapter* analyzer)
 	{
 	EventHandlerPtr f = icmp_router_solicitation;
 
@@ -615,7 +615,7 @@ void ICMPAnalyzer::RouterSolicit(double t, const struct icmp* icmpp, int len,
 
 void ICMPAnalyzer::Context4(double t, const struct icmp* icmpp, int len,
                             int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
-                            ICMPTransportAnalyzer* analyzer)
+                            ICMPAnalyzerAdapter* analyzer)
 	{
 	EventHandlerPtr f = nullptr;
 
@@ -642,7 +642,7 @@ void ICMPAnalyzer::Context4(double t, const struct icmp* icmpp, int len,
 
 void ICMPAnalyzer::Context6(double t, const struct icmp* icmpp, int len,
                             int caplen, const u_char*& data, const IP_Hdr* ip_hdr,
-                            ICMPTransportAnalyzer* analyzer)
+                            ICMPAnalyzerAdapter* analyzer)
 	{
 	EventHandlerPtr f = nullptr;
 
@@ -679,7 +679,7 @@ void ICMPAnalyzer::Context6(double t, const struct icmp* icmpp, int len,
 	}
 
 zeek::VectorValPtr ICMPAnalyzer::BuildNDOptionsVal(int caplen, const u_char* data,
-                                                   ICMPTransportAnalyzer* analyzer)
+                                                   ICMPAnalyzerAdapter* analyzer)
 	{
 	static auto icmp6_nd_option_type = id::find_type<RecordType>("icmp6_nd_option");
 	static auto icmp6_nd_prefix_info_type = id::find_type<RecordType>("icmp6_nd_prefix_info");
@@ -868,7 +868,7 @@ int ICMPAnalyzer::ICMP6_counterpart(int icmp_type, int icmp_code, bool& is_one_w
 	}
 	}
 
-void ICMPTransportAnalyzer::AddExtraAnalyzers(Connection* conn)
+void ICMPAnalyzerAdapter::AddExtraAnalyzers(Connection* conn)
 	{
 	static analyzer::Tag analyzer_connsize = analyzer_mgr->GetComponentTag("CONNSIZE");
 
@@ -877,7 +877,7 @@ void ICMPTransportAnalyzer::AddExtraAnalyzers(Connection* conn)
 		AddChildAnalyzer(new analyzer::conn_size::ConnSize_Analyzer(conn));
 	}
 
-void ICMPTransportAnalyzer::UpdateConnVal(zeek::RecordVal* conn_val)
+void ICMPAnalyzerAdapter::UpdateConnVal(zeek::RecordVal* conn_val)
 	{
 	const auto& orig_endp = conn_val->GetField("orig");
 	const auto& resp_endp = conn_val->GetField("resp");
@@ -888,7 +888,7 @@ void ICMPTransportAnalyzer::UpdateConnVal(zeek::RecordVal* conn_val)
 	analyzer::Analyzer::UpdateConnVal(conn_val);
 	}
 
-void ICMPTransportAnalyzer::UpdateEndpointVal(const ValPtr& endp_arg, bool is_orig)
+void ICMPAnalyzerAdapter::UpdateEndpointVal(const ValPtr& endp_arg, bool is_orig)
 	{
 	Conn()->EnableStatusUpdateTimer();
 
@@ -907,7 +907,7 @@ void ICMPTransportAnalyzer::UpdateEndpointVal(const ValPtr& endp_arg, bool is_or
 		}
 	}
 
-void ICMPTransportAnalyzer::UpdateLength(bool is_orig, int len)
+void ICMPAnalyzerAdapter::UpdateLength(bool is_orig, int len)
 	{
 	int& len_stat = is_orig ? request_len : reply_len;
 	if ( len_stat < 0 )
@@ -916,7 +916,7 @@ void ICMPTransportAnalyzer::UpdateLength(bool is_orig, int len)
 		len_stat += len;
 	}
 
-void ICMPTransportAnalyzer::InitEndpointMatcher(const IP_Hdr* ip_hdr, int len, bool is_orig)
+void ICMPAnalyzerAdapter::InitEndpointMatcher(const IP_Hdr* ip_hdr, int len, bool is_orig)
 	{
 	if ( zeek::detail::rule_matcher )
 		{
@@ -925,15 +925,15 @@ void ICMPTransportAnalyzer::InitEndpointMatcher(const IP_Hdr* ip_hdr, int len, b
 		}
 	}
 
-void ICMPTransportAnalyzer::MatchEndpoint(const u_char* data, int len, bool is_orig)
+void ICMPAnalyzerAdapter::MatchEndpoint(const u_char* data, int len, bool is_orig)
 	{
 	if ( zeek::detail::rule_matcher )
 		matcher_state.Match(zeek::detail::Rule::PAYLOAD, data, len, is_orig,
 		                    false, false, true);
 	}
 
-void ICMPTransportAnalyzer::Done()
+void ICMPAnalyzerAdapter::Done()
 	{
-	TransportLayerAnalyzer::Done();
+	AnalyzerAdapter::Done();
 	matcher_state.FinishEndpointMatcher();
 	}
