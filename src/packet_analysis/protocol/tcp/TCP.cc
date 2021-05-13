@@ -2,16 +2,39 @@
 
 #include "zeek/packet_analysis/protocol/tcp/TCP.h"
 #include "zeek/RunState.h"
+#include "zeek/analyzer/protocol/pia/PIA.h"
+#include "zeek/packet_analysis/protocol/tcp/TCPAnalyzerAdapter.h"
 
 using namespace zeek::packet_analysis::TCP;
 using namespace zeek::packet_analysis::IP;
 
 TCPAnalyzer::TCPAnalyzer() : IPBasedAnalyzer("TCP", TRANSPORT_TCP, TCP_PORT_MASK)
 	{
+	new_plugin = true;
 	}
 
 TCPAnalyzer::~TCPAnalyzer()
 	{
+	}
+
+void TCPAnalyzer::Initialize()
+	{
+	}
+
+AnalyzerAdapter* TCPAnalyzer::MakeAnalyzerAdapter(Connection* conn)
+	{
+	auto* root = new TCPAnalyzerAdapter(conn);
+	root->SetParent(this);
+
+	conn->EnableStatusUpdateTimer();
+	conn->SetInactivityTimeout(zeek::detail::udp_inactivity_timeout);
+
+	return root;
+	}
+
+zeek::analyzer::pia::PIA* TCPAnalyzer::MakePIA(Connection* conn)
+	{
+	return new analyzer::pia::PIA_TCP(conn);
 	}
 
 bool TCPAnalyzer::BuildConnTuple(size_t len, const uint8_t* data, Packet* packet,
@@ -73,4 +96,14 @@ bool TCPAnalyzer::WantConnection(uint16_t src_port, uint16_t dst_port,
 		}
 
 	return true;
+	}
+
+void TCPAnalyzer::DeliverPacket(Connection* c, double t, bool is_orig, int remaining, Packet* pkt)
+	{
+	auto* ta = static_cast<TCPAnalyzerAdapter*>(c->GetRootAnalyzer());
+
+	const u_char* data = pkt->ip_hdr->Payload();
+	int len = pkt->ip_hdr->PayloadLen();
+
+	ta->DeliverPacket(len, data, is_orig, {}, pkt->ip_hdr.get(), remaining);
 	}

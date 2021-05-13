@@ -18,6 +18,13 @@ public:
 		return std::make_shared<TCPAnalyzer>();
 		}
 
+	/**
+	 * Initialize the analyzer. This method is called after the configuration
+	 * was read. Derived classes can override this method to implement custom
+	 * initialization.
+	 */
+	void Initialize() override;
+
 protected:
 
 	/**
@@ -25,6 +32,9 @@ protected:
 	 */
 	bool BuildConnTuple(size_t len, const uint8_t* data, Packet* packet,
 	                    ConnTuple& tuple) override;
+
+	void DeliverPacket(Connection* c, double t, bool is_orig, int remaining,
+	                        Packet* pkt) override;
 
 	/**
 	 * Upon seeing the first packet of a connection, checks whether we want
@@ -40,6 +50,10 @@ protected:
 	 */
 	bool WantConnection(uint16_t src_port, uint16_t dst_port,
 	                    const u_char* data, bool& flip_roles) const override;
+
+	packet_analysis::IP::AnalyzerAdapter* MakeAnalyzerAdapter(Connection* conn) override;
+	analyzer::pia::PIA* MakePIA(Connection* conn) override;
+
 };
 
 }
